@@ -353,9 +353,13 @@ class Git(Tool):
     def _mark_safe(self, cwd: pathlib.PurePath) -> None:
         self.run(f"config --global --add safe.directory {cwd}", cwd=cwd, force_run=True)
 
-    def get_current_branch(self, cwd: pathlib.PurePath) -> str:
+    def get_current_branch(self, cwd: pathlib.PurePath, local: bool = True) -> str:
+        ref_spec = "HEAD"
+        if not local:
+            ref_spec = "--symbolic-full-name @{upstream}"
+
         result = self.run(
-            "rev-parse --abbrev-ref HEAD",
+            f"rev-parse --abbrev-ref {ref_spec}",
             shell=True,
             cwd=cwd,
             force_run=True,

@@ -429,9 +429,14 @@ class RepoWorktree(BaseLocation):
                 break
 
         if not remote_exists:
-            remote = runbook.worktree_name
+            if runbook.worktree_name == repo_name:
+                remote = "origin"
+            else:
+                remote = runbook.worktree_name
+
             self._log.info(f"adding remote {remote} for {runbook.worktree_repo}")
             git.remote_add(cwd=code_path, name=remote, url=runbook.worktree_repo)
+
         git.fetch(
             cwd=code_path,
             remote=remote,
@@ -460,15 +465,25 @@ class RepoWorktree(BaseLocation):
                 self._log.info(f"Kernel HEAD is now at : {latest_commit_id}")
                 return worktree_path
 
-            # worktree exists
-            target_ref = runbook.worktree_ref
+            # worktree exists — fetch the tracking remote and update
+            if runbook.worktree_ref:
+                target_ref = runbook.worktree_ref
             target_path = worktree_path
 
         if target_ref:
-            if git.get_current_branch(cwd=target_path) == target_ref:
+            current_local_branch = git.get_current_branch(cwd=target_path)
+            tracking_remote_branch = git.get_current_branch(
+                cwd=target_path, local=False
+            )
+            remote, _, remote_branch = tracking_remote_branch.partition("/")
+            if current_local_branch == target_ref or remote_branch == target_ref:
                 git.pull(cwd=target_path)
 
-            git.checkout(ref=target_ref, cwd=target_path)
+            git.checkout(
+                ref=f"{remote}/{target_ref}",
+                cwd=target_path,
+                checkout_branch=target_ref,
+            )
             self._log.info(f"checkout code from: '{target_ref}'")
 
         latest_commit_id = git.get_latest_commit_id(cwd=target_path)
